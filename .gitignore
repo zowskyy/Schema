@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.env
+.cursor/
+extension/*.vsix
+extension/node_modules/
+extension/out/

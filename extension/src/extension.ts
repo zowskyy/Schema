@@ -1,0 +1,306 @@
+import * as cp from "child_process";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
+import * as vscode from "vscode";
+
+interface GateResult {
+  status: string;
+  score?: number;
+  gates?: Record<string, boolean>;
+  elapsed_ms?: number;
+  code?: string;
+}
+
+let outputChannel: vscode.OutputChannel;
+let saveListener: vscode.Disposable | undefined;
+
+export function activate(context: vscode.ExtensionContext): void {
+  outputChannel = vscode.window.createOutputChannel("Cursor Gate");
+  context.subscriptions.push(outputChannel);
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("cursorGate.reviewFile", () => reviewActiveFile(context)),
+    vscode.commands.registerCommand("cursorGate.reviewWorkspace", () => reviewWorkspace(context)),
+    vscode.commands.registerCommand("cursorGate.reviewWithDocker", () =>
+      reviewActiveFile(context, true)
+    )
+  );
+
+  updateSaveListener(context);
+
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration((e) => {
+      if (e.affectsConfiguration("cursorGate.runOnSave")) {
+        updateSaveListener(context);
+      }
+    })
+  );
+}
+
+export function deactivate(): void {
+  saveListener?.dispose();
+}
+
+function getConfig(): vscode.WorkspaceConfiguration {
+  return vscode.workspace.getConfiguration("cursorGate");
+}
+
+function resolveScriptPath(context: vscode.ExtensionContext): string {
+  const configured = getConfig().get<string>("scriptPath", "").trim();
+  if (configured && fs.existsSync(configured)) {
+    return configured;
+  }
+
+  const bundled = path.join(context.extensionPath, "scripts", "cursor_gate.py");
+  if (fs.existsSync(bundled)) {
+    return bundled;
+  }
+
+  const homeScript = path.join(os.homedir(), ".cursor", "cursor_gate.py");
+  if (fs.existsSync(homeScript)) {
+    return homeScript;
+  }
+
+  throw new Error(
+    "cursor_gate.py not found. Set cursorGate.scriptPath or install to ~/.cursor/cursor_gate.py"
+  );
+}
+
+function buildArgs(filePath: string, outputPath: string): string[] {
+  const cfg = getConfig();
+  return [
+    "--file",
+    filePath,
+    "--iterations",
+    String(cfg.get<number>("iterations", 3)),
+    "--region",
+    cfg.get<string>("region", "us-east-1"),
+    "--output",
+    outputPath,
+  ];
+}
+
+function runReview(
+  context: vscode.ExtensionContext,
+  filePath: string,
+  forceDocker = false
+): Promise<GateResult> {
+  const cfg = getConfig();
+  const useDocker = forceDocker || cfg.get<boolean>("useDocker", false);
+  const outputPath = path.join(os.tmpdir(), `cursor-gate-${Date.now()}.json`);
+  const args = buildArgs(filePath, outputPath);
+
+  return new Promise((resolve, reject) => {
+    let cmd: string;
+    let cmdArgs: string[];
+
+    if (useDocker) {
+      const image = cfg.get<string>("dockerImage", "cursor-gate:latest");
+      const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? path.dirname(filePath);
+      const relFile = path.relative(workspaceRoot, filePath);
+      const containerFile = `/workspace/${relFile.split(path.sep).join("/")}`;
+
+      cmd = "docker";
+      cmdArgs = [
+        "run",
+        "--rm",
+        "-v",
+        `${workspaceRoot}:/workspace:ro`,
+        "-v",
+        "cursor-gate-logs:/data/gate-logs",
+        "-v",
+        "cursor-gate-cache:/data/gate-cache",
+        image,
+        "--file",
+        containerFile,
+        ...args.slice(2),
+      ];
+    } else {
+      const pythonPath = cfg.get<string>("pythonPath", "python3");
+      const scriptPath = resolveScriptPath(context);
+      cmd = pythonPath;
+      cmdArgs = [scriptPath, ...args];
+    }
+
+    outputChannel.appendLine(`$ ${cmd} ${cmdArgs.join(" ")}`);
+
+    const proc = cp.spawn(cmd, cmdArgs, { cwd: path.dirname(filePath) });
+    let stderr = "";
+
+    proc.stderr.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString();
+    });
+
+    proc.on("error", (err) => reject(err));
+
+    proc.on("close", (code) => {
+      try {
+        if (fs.existsSync(outputPath)) {
+          const result = JSON.parse(fs.readFileSync(outputPath, "utf-8")) as GateResult;
+          fs.unlinkSync(outputPath);
+          resolve(result);
+          return;
+        }
+        if (code !== 0) {
+          reject(new Error(stderr || `cursor_gate exited with code ${code}`));
+          return;
+        }
+        reject(new Error("No output file produced"));
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+}
+
+function formatResult(result: GateResult, filePath: string): string {
+  const lines = [
+    `=== Cursor Gate: ${path.basename(filePath)} ===`,
+    `Status: ${result.status}`,
+    `Score: ${result.score?.toFixed(3) ?? "n/a"}`,
+    `Elapsed: ${result.elapsed_ms ?? "n/a"} ms`,
+    "",
+  ];
+
+  if (result.gates) {
+    lines.push("Gates:");
+    for (const [gate, passed] of Object.entries(result.gates)) {
+      lines.push(`  ${passed ? "✅" : "❌"} ${gate}`);
+    }
+  }
+
+  return lines.join("\n");
+}
+
+async function showResult(result: GateResult, filePath: string): Promise<void> {
+  const text = formatResult(result, filePath);
+  outputChannel.clear();
+  outputChannel.appendLine(text);
+  outputChannel.show(true);
+
+  const cfg = getConfig();
+  if (result.status === "PASS") {
+    vscode.window.showInformationMessage(`Cursor Gate: PASS (${result.score?.toFixed(2)})`);
+  } else if (cfg.get<boolean>("failOnGateFailure", false)) {
+    vscode.window.showErrorMessage(`Cursor Gate: FAIL — see output panel`);
+  } else {
+    vscode.window.showWarningMessage(`Cursor Gate: FAIL — see output panel`);
+  }
+}
+
+async function reviewActiveFile(context: vscode.ExtensionContext, forceDocker = false): Promise<void> {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) {
+    vscode.window.showErrorMessage("No active file to review");
+    return;
+  }
+
+  const filePath = editor.document.uri.fsPath;
+  if (!fs.existsSync(filePath)) {
+    vscode.window.showErrorMessage("Save the file before running Cursor Gate");
+    return;
+  }
+
+  await vscode.window.withProgress(
+    { location: vscode.ProgressLocation.Notification, title: "Running Cursor Gate..." },
+    async () => {
+      try {
+        const result = await runReview(context, filePath, forceDocker);
+        await showResult(result, filePath);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        vscode.window.showErrorMessage(`Cursor Gate failed: ${message}`);
+        outputChannel.appendLine(`Error: ${message}`);
+        outputChannel.show(true);
+      }
+    }
+  );
+}
+
+async function reviewWorkspace(context: vscode.ExtensionContext): Promise<void> {
+  const folder = vscode.workspace.workspaceFolders?.[0];
+  if (!folder) {
+    vscode.window.showErrorMessage("Open a workspace folder first");
+    return;
+  }
+
+  const patterns = ["**/*.py", "**/*.ts", "**/*.js", "**/*.go", "**/*.rs"];
+  const files: vscode.Uri[] = [];
+  for (const pattern of patterns) {
+    const found = await vscode.workspace.findFiles(pattern, "**/node_modules/**", 20);
+    files.push(...found);
+  }
+
+  if (files.length === 0) {
+    vscode.window.showInformationMessage("No reviewable files found in workspace");
+    return;
+  }
+
+  let passed = 0;
+  let failed = 0;
+
+  await vscode.window.withProgress(
+    {
+      location: vscode.ProgressLocation.Notification,
+      title: "Cursor Gate: reviewing workspace",
+      cancellable: false,
+    },
+    async (progress) => {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        progress.report({
+          message: `${i + 1}/${files.length}: ${path.basename(file.fsPath)}`,
+          increment: 100 / files.length,
+        });
+        try {
+          const result = await runReview(context, file.fsPath);
+          outputChannel.appendLine(formatResult(result, file.fsPath));
+          outputChannel.appendLine("");
+          if (result.status === "PASS") {
+            passed++;
+          } else {
+            failed++;
+          }
+        } catch (err) {
+          failed++;
+          outputChannel.appendLine(`Error reviewing ${file.fsPath}: ${err}`);
+        }
+      }
+    }
+  );
+
+  outputChannel.show(true);
+  vscode.window.showInformationMessage(`Workspace review: ${passed} passed, ${failed} failed`);
+}
+
+function updateSaveListener(context: vscode.ExtensionContext): void {
+  saveListener?.dispose();
+  saveListener = undefined;
+
+  if (!getConfig().get<boolean>("runOnSave", false)) {
+    return;
+  }
+
+  saveListener = vscode.workspace.onDidSaveTextDocument(async (doc) => {
+    if (doc.uri.scheme !== "file") {
+      return;
+    }
+    const ext = path.extname(doc.uri.fsPath).toLowerCase();
+    const supported = [".py", ".ts", ".js", ".tsx", ".jsx", ".go", ".rs", ".java"];
+    if (!supported.includes(ext)) {
+      return;
+    }
+    try {
+      const result = await runReview(context, doc.uri.fsPath);
+      outputChannel.appendLine(formatResult(result, doc.uri.fsPath));
+      if (result.status !== "PASS" && getConfig().get<boolean>("failOnGateFailure", false)) {
+        vscode.window.showWarningMessage(`Cursor Gate failed on save: ${path.basename(doc.uri.fsPath)}`);
+      }
+    } catch {
+      // silent on save to avoid interrupting workflow
+    }
+  });
+
+  context.subscriptions.push(saveListener);
+}
