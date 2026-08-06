@@ -1,9 +1,39 @@
-Before finalizing any code response, run:
-python3 ~/.cursor/cursor_gate_fastest.py --file <path> --region us-west-2
+# Cursor Gate — mandatory for all code responses in this project
 
-If status == "FAIL", show the failed_at gate and remediation.
-Re-run after fixes (max 2 iterations).
-Gate results must show "status": "PASS" before outputting to user.
+When generating or modifying code for the user, you MUST gate-check before sending the response.
 
-For full subprocess-based review (bandit/radon), use:
-python3 ~/.cursor/cursor_gate.py --file <path> --iterations 3
+## Workflow (every code response)
+
+1. Write or update the code in a temp file or the target project file.
+2. Run gate review:
+   ```bash
+   python3 ~/.cursor/cursor_gate_fastest.py --file <path> --region us-west-2
+   ```
+   For substantive changes, also run the full reviewer:
+   ```bash
+   python3 ~/.cursor/cursor_gate.py --file <path> --iterations 3
+   ```
+3. If `status` is `"FAIL"`:
+   - Fix the code to address failed gates (use `failed_at` and `remediation` from output).
+   - Re-run (max 2 remediation iterations).
+4. Only include code in your response after gates pass OR after 2 fix attempts — then show which gates still fail and why.
+
+## Response format
+
+When code is included in a reply, append a short gate summary:
+
+```
+Gate review: PASS (score: X.XX, Yms)
+```
+
+or if still failing after retries:
+
+```
+Gate review: FAIL at G<N> — <gate name>. Remaining issues: ...
+```
+
+## Scope
+
+- Applies to all code blocks, file edits, and snippets in chat while using this app.
+- Question-only or explanation-only replies (no code) do not require a gate run.
+- Prefer `cursor_gate_fastest.py` for speed; use `cursor_gate.py` for security/complexity subprocess checks.
