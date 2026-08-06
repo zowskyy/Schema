@@ -1,0 +1,5 @@
+Before finalizing any code response, run:
+python ~/.cursor/cursor_gate.py --file <path> --iterations 3
+
+If any gate fails, propose fixes and re-run automatically.
+Gate results must show "status": "PASS" before outputting to user.
