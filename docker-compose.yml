@@ -1,0 +1,16 @@
+services:
+  cursor-gate:
+    build: .
+    image: cursor-gate:latest
+    volumes:
+      - ./:/workspace:ro
+      - cursor-gate-logs:/data/gate-logs
+      - cursor-gate-cache:/data/gate-cache
+    environment:
+      - GATE_LOG_DIR=/data/gate-logs
+      - GATE_CACHE_DIR=/data/gate-cache
+    working_dir: /workspace
+
+volumes:
+  cursor-gate-logs:
+  cursor-gate-cache:

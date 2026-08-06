@@ -1,0 +1,127 @@
+{
+  "name": "cursor-gate",
+  "displayName": "Cursor Gate — 15-Gate Review",
+  "description": "Run 15 quality gates on code before save or on demand. Works in VS Code and Cursor.",
+  "version": "1.0.0",
+  "publisher": "cursor-gate",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zowskyy/Schema.git"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Linters",
+    "Other"
+  ],
+  "keywords": [
+    "cursor",
+    "code review",
+    "security",
+    "quality gates"
+  ],
+  "activationEvents": [
+    "onCommand:cursorGate.reviewFile",
+    "onCommand:cursorGate.reviewWorkspace",
+    "onCommand:cursorGate.reviewWithDocker"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "cursorGate.reviewFile",
+        "title": "Cursor Gate: Review Current File",
+        "icon": "$(shield)"
+      },
+      {
+        "command": "cursorGate.reviewWorkspace",
+        "title": "Cursor Gate: Review Workspace",
+        "icon": "$(folder)"
+      },
+      {
+        "command": "cursorGate.reviewWithDocker",
+        "title": "Cursor Gate: Review with Docker",
+        "icon": "$(package)"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "cursorGate.reviewFile",
+          "group": "navigation@90"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "cursorGate.reviewFile",
+          "group": "navigation@90"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Cursor Gate",
+      "properties": {
+        "cursorGate.useFastest": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use fail-fast cursor_gate_fastest.py (recommended)"
+        },
+        "cursorGate.pythonPath": {
+          "type": "string",
+          "default": "python3",
+          "description": "Python executable for local reviews"
+        },
+        "cursorGate.scriptPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to cursor_gate.py (defaults to bundled script)"
+        },
+        "cursorGate.useDocker": {
+          "type": "boolean",
+          "default": false,
+          "description": "Use Docker instead of local Python"
+        },
+        "cursorGate.dockerImage": {
+          "type": "string",
+          "default": "cursor-gate:latest",
+          "description": "Docker image for reviews"
+        },
+        "cursorGate.iterations": {
+          "type": "number",
+          "default": 3,
+          "description": "Max remediation iterations"
+        },
+        "cursorGate.region": {
+          "type": "string",
+          "default": "us-east-1",
+          "description": "Cloud region for carbon gate"
+        },
+        "cursorGate.runOnSave": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically review active file on save"
+        },
+        "cursorGate.failOnGateFailure": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show error notification when gates fail"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package --no-dependencies",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^2.24.0",
+    "typescript": "^5.3.0"
+  }
+}
