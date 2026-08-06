@@ -13,11 +13,26 @@ cp -f "$ROOT/cursor_gate.py" "$ROOT/cursor_gate_fastest.py" ~/.cursor/
 chmod +x ~/.cursor/cursor_gate.py ~/.cursor/cursor_gate_fastest.py
 
 if [ -d "$ROOT/.cursor/rules" ]; then
-  cp -f "$ROOT/.cursor/rules/"*.mdc ~/.cursor/rules/ 2>/dev/null || true
+  shopt -s nullglob
+  for rule in "$ROOT/.cursor/rules/"*.mdc; do
+    cp -f "$rule" ~/.cursor/rules/
+  done
+  shopt -u nullglob
 fi
 
 if [ -f "$ROOT/.cursorrules" ]; then
   cp -f "$ROOT/.cursorrules" ~/.cursor/.cursorrules.project
+fi
+
+SMOKE_FILE="$ROOT/samples/hello_passing.py"
+if [ ! -f "$SMOKE_FILE" ]; then
+  SMOKE_FILE="$ROOT/samples/hello.py"
+fi
+
+echo "Smoke testing gate reviewers on $SMOKE_FILE ..."
+if ! bash "$ROOT/scripts/gate-file.sh" --file "$SMOKE_FILE"; then
+  echo "Gate smoke test FAILED" >&2
+  exit 1
 fi
 
 date -u +%Y-%m-%dT%H:%M:%SZ > ~/.cursor/.agent-policy-installed

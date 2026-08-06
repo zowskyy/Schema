@@ -231,3 +231,4 @@ if __name__ == "__main__":
         Path(args.output).write_text(output, encoding="utf-8")
     else:
         print(output)
+    sys.exit(0 if result["status"] == "PASS" else 1)

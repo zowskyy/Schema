@@ -58,6 +58,14 @@ done
 MOUNT_ARGS=(-v "$REPO_ROOT:/workspace:ro" -v "cursor-gate-logs:/data/gate-logs" -v "cursor-gate-cache:/data/gate-cache")
 WORKDIR_ARGS=(-w /workspace)
 
+USE_FASTEST="${CURSOR_GATE_FASTEST:-1}"
+if [[ "$USE_FASTEST" == "1" ]]; then
+  GATE_SCRIPT="/app/cursor_gate_fastest.py"
+else
+  GATE_SCRIPT="/app/cursor_gate.py"
+fi
+DOCKER_ARGS=("$GATE_SCRIPT" "${ARGS[@]}")
+
 if $STDIN_MODE; then
   docker run --rm -i "${ENV_FILE_ARGS[@]}" "${MOUNT_ARGS[@]}" "${WORKDIR_ARGS[@]}" "$IMAGE" "${ARGS[@]}"
 elif [[ -n "$FILE_ARG" ]]; then

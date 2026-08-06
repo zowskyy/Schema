@@ -14,6 +14,45 @@ Every cloud agent environment bootstraps this policy via `.cursor/environment.js
 
 Agents must loop write → gate → fix until both reviewers PASS. No iteration caps. No partial deliveries.
 
+## Quarterback / worker delegation
+
+The main agent (quarterback) decomposes work and delegates heavy tasks to Task subagents (workers). Workers implement and gate their own changes but never message the user. After merging worker output, the quarterback **re-runs both gate reviewers on every changed file** before delivery.
+
+See [`.cursor/rules/quarterback-worker.mdc`](.cursor/rules/quarterback-worker.mdc) for roles, delegation heuristics, and re-gate requirements.
+
+## Gate scripts
+
+Run both reviewers (`cursor_gate_fastest.py` + `cursor_gate.py`) on one file:
+
+```bash
+bash scripts/gate-file.sh --file path/to/file.py
+```
+
+Gate all changed `.py`/`.ts`/`.js` files (from `git diff HEAD`), or explicit paths:
+
+```bash
+bash scripts/gate-all-changed.sh              # changed files only
+bash scripts/gate-all-changed.sh src/foo.py   # specific files
+```
+
+Either script exits non-zero if either reviewer returns `FAIL`.
+
+## Sample fixtures
+
+| File | Purpose |
+|------|---------|
+| [`samples/hello_passing.py`](samples/hello_passing.py) | Reference — passes all 15 gates in both reviewers |
+| [`samples/hello.py`](samples/hello.py) | Minimal example — intentionally fails several gates |
+
+```bash
+bash scripts/gate-file.sh --file samples/hello_passing.py  # expect PASS
+bash scripts/gate-file.sh --file samples/hello.py          # expect FAIL
+```
+
+## CI gate-check
+
+[`.github/workflows/gate-check.yml`](.github/workflows/gate-check.yml) runs on every pull request: installs deps, bootstraps the agent environment, then gates `samples/hello_passing.py` and `cursor_gate_fastest.py` via `gate-file.sh`.
+
 ## Quick Start
 
 ### Option A: Fastest CLI (recommended — fail-fast, ~0.3–0.8s)

@@ -100,18 +100,22 @@ function runReview(
 ): Promise<GateResult> {
   const cfg = getConfig();
   const useDocker = forceDocker || cfg.get<boolean>("useDocker", false);
-  const outputPath = path.join(os.tmpdir(), `cursor-gate-${Date.now()}.json`);
+  const useFastest = cfg.get<boolean>("useFastest", true);
+  const outputDir = os.tmpdir();
+  const outputPath = path.join(outputDir, `cursor-gate-${Date.now()}.json`);
   const args = buildArgs(filePath, outputPath);
 
   return new Promise((resolve, reject) => {
     let cmd: string;
     let cmdArgs: string[];
+    let stdout = "";
 
     if (useDocker) {
       const image = cfg.get<string>("dockerImage", "cursor-gate:latest");
       const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? path.dirname(filePath);
       const relFile = path.relative(workspaceRoot, filePath);
       const containerFile = `/workspace/${relFile.split(path.sep).join("/")}`;
+      const containerScript = useFastest ? "/app/cursor_gate_fastest.py" : "/app/cursor_gate.py";
 
       cmd = "docker";
       cmdArgs = [
@@ -120,10 +124,13 @@ function runReview(
         "-v",
         `${workspaceRoot}:/workspace:ro`,
         "-v",
+        `${outputDir}:${outputDir}`,
+        "-v",
         "cursor-gate-logs:/data/gate-logs",
         "-v",
         "cursor-gate-cache:/data/gate-cache",
         image,
+        containerScript,
         "--file",
         containerFile,
         ...args.slice(2),
@@ -140,6 +147,10 @@ function runReview(
     const proc = cp.spawn(cmd, cmdArgs, { cwd: path.dirname(filePath) });
     let stderr = "";
 
+    proc.stdout.on("data", (chunk: Buffer) => {
+      stdout += chunk.toString();
+    });
+
     proc.stderr.on("data", (chunk: Buffer) => {
       stderr += chunk.toString();
     });
@@ -154,11 +165,18 @@ function runReview(
           resolve(result);
           return;
         }
+
+        const jsonMatch = stdout.match(/\{[\s\S]*"status"\s*:\s*"(?:PASS|FAIL)"[\s\S]*\}/);
+        if (jsonMatch) {
+          resolve(JSON.parse(jsonMatch[0]) as GateResult);
+          return;
+        }
+
         if (code !== 0) {
           reject(new Error(stderr || `cursor_gate exited with code ${code}`));
           return;
         }
-        reject(new Error("No output file produced"));
+        reject(new Error("No gate output produced"));
       } catch (err) {
         reject(err);
       }

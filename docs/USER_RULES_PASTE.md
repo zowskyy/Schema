@@ -1,6 +1,8 @@
 # Global User Rules (optional — for ALL projects)
 
-**You may not need this file** if you only work in the Schema repo — the policy is already enforced via `.cursor/rules/ship-finished-work.mdc` and `AGENTS.md`.
+**AUTO-ENABLED in the Schema repo** — agents follow gate and delegation policy automatically; no user command or reminder is required.
+
+**You may not need this file** if you only work in the Schema repo — the policy is already enforced via `.cursor/rules/ship-finished-work.mdc`, `.cursor/rules/quarterback-worker.mdc`, and `AGENTS.md`.
 
 Use User Rules only when you want the same policy in **every** project on your machine.
 
@@ -42,11 +44,11 @@ Try these paths (UI varies by version):
 ```
 Ship finished work only. Never deliver partial code or stop at iteration limits.
 
+AUTO-ENABLED — apply this policy every session without waiting for a user command or reminder.
+
 When writing or changing code, run both gate reviewers and fix until PASS:
-  python3 ~/.cursor/cursor_gate_fastest.py --file <path>
+  python3 ~/.cursor/cursor_gate_fastest.py --file <path> --region us-west-2
   python3 ~/.cursor/cursor_gate.py --file <path> --iterations 3
 
 Loop write → gate → fix until both return "status": "PASS". Only stop if BLOCKED with a specific ask. Never hand me unfixed gate failures when I can still fix them.
-
-If I say "Not done — keep going until PASS", continue immediately.
 ```
