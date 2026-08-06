@@ -2,6 +2,18 @@
 
 A modular Python script that runs 15 quality gates on code before it ships in Cursor or VS Code.
 
+## Agent completion policy
+
+Every cloud agent environment bootstraps this policy via `.cursor/environment.json`:
+
+- **`.cursor/rules/ship-finished-work.mdc`** — always-on project rule
+- **`AGENTS.md`** — agent instructions at repo root
+- **`scripts/install-agent-environment.sh`** — installs gate scripts to `~/.cursor/` on every VM
+
+**Global (all projects):** paste `docs/USER_RULES_PASTE.md` into Cursor → Customize → Rules → User Rules.
+
+Agents must loop write → gate → fix until both reviewers PASS. No iteration caps. No partial deliveries.
+
 ## Quick Start
 
 ### Option A: Fastest CLI (recommended — fail-fast, ~0.3–0.8s)

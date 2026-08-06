@@ -1,46 +1,20 @@
-# Cursor Gate — mandatory for all code responses in this project
+# Ship finished work only — see .cursor/rules/ship-finished-work.mdc and AGENTS.md
 
-When generating or modifying code for the user, you MUST gate-check before sending the response.
+When generating or modifying code, you MUST gate-check and fix until PASS before sending the response.
 
-## Completion standard (non-negotiable)
+## Gate workflow
 
-**Do not ship partial work.** Keep fixing until gates pass or you hit a *real* blocker you cannot resolve alone (missing credentials, ambiguous product decision, broken external service). An arbitrary iteration cap is NOT a valid reason to stop.
-
-- ❌ Never stop after N attempts and hand back a failing answer sheet.
-- ❌ Never say "here's what failed, you can fix the rest" when you can still fix it.
-- ✅ Loop: write → gate → fix → gate → … until `status: "PASS"`.
-- ✅ If truly blocked, state the exact blocker and what you need from the user — not a list of gate failures you didn't try to fix.
-
-## Workflow (every code response)
-
-1. Write or update the code in the target file.
-2. Run gate review:
-   ```bash
-   python3 ~/.cursor/cursor_gate_fastest.py --file <path> --region us-west-2
-   python3 ~/.cursor/cursor_gate.py --file <path> --iterations 3
-   ```
-3. If `status` is `"FAIL"`: fix every failed gate, then re-run both reviewers.
-4. Repeat step 3 until **both** reviewers report `"PASS"`.
-5. Only then include the code in your response.
-
-## Response format
-
-When code is included in a reply, append:
-
-```
-Gate review: PASS (fastest + full, score: X.XX)
+```bash
+python3 ~/.cursor/cursor_gate_fastest.py --file <path> --region us-west-2
+python3 ~/.cursor/cursor_gate.py --file <path> --iterations 3
 ```
 
-If blocked after genuine effort, say so explicitly:
+If either fails: fix every failed gate, re-run both. **No iteration cap.** Repeat until both return `"status": "PASS"`.
 
-```
-Gate review: BLOCKED — <specific reason>. Need from you: <one clear ask>.
-```
+Only valid stop: **BLOCKED** — name the exact blocker and one specific ask.
 
-Never use "FAIL after 2 iterations" as a stopping condition.
+## Forbidden
 
-## Scope
-
-- Applies to all code blocks, file edits, and snippets in chat while using this app.
-- Question-only or explanation-only replies (no code) do not require a gate run.
-- `cursor_gate_fastest.py` for fail-fast checks; `cursor_gate.py` for full subprocess review — both must pass before delivery.
+- Stopping after N attempts with failing gates
+- Delivering code with known unfixed gate failures
+- Failure summaries instead of fixes
