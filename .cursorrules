@@ -1,5 +1,9 @@
 Before finalizing any code response, run:
-python ~/.cursor/cursor_gate.py --file <path> --iterations 3
+python3 ~/.cursor/cursor_gate_fastest.py --file <path> --region us-west-2
 
-If any gate fails, propose fixes and re-run automatically.
+If status == "FAIL", show the failed_at gate and remediation.
+Re-run after fixes (max 2 iterations).
 Gate results must show "status": "PASS" before outputting to user.
+
+For full subprocess-based review (bandit/radon), use:
+python3 ~/.cursor/cursor_gate.py --file <path> --iterations 3

@@ -63,6 +63,11 @@
     "configuration": {
       "title": "Cursor Gate",
       "properties": {
+        "cursorGate.useFastest": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use fail-fast cursor_gate_fastest.py (recommended)"
+        },
         "cursorGate.pythonPath": {
           "type": "string",
           "default": "python3",

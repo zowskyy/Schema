@@ -4,7 +4,15 @@ A modular Python script that runs 15 quality gates on code before it ships in Cu
 
 ## Quick Start
 
-### Option A: VS Code / Cursor Extension (recommended)
+### Option A: Fastest CLI (recommended — fail-fast, ~0.3–0.8s)
+
+```bash
+cp cursor_gate_fastest.py ~/.cursor/cursor_gate_fastest.py
+python3 ~/.cursor/cursor_gate_fastest.py --file ./app.py --region us-west-2
+echo 'print(1)' | python3 cursor_gate_fastest.py --stdin  # ~0.3s fail-fast
+```
+
+### Option B: VS Code / Cursor Extension
 
 ```bash
 # Install the packaged extension
@@ -12,9 +20,9 @@ cursor --install-extension releases/cursor-gate-1.0.0.vsix
 # or: code --install-extension releases/cursor-gate-1.0.0.vsix
 ```
 
-Then run **Cursor Gate: Review Current File** from the command palette (`Cmd+Shift+P`).
+Then run **Cursor Gate: Review Current File** from the command palette (`Cmd+Shift+P`). Uses `cursor_gate_fastest.py` by default (`cursorGate.useFastest: true`).
 
-### Option B: Local Python CLI
+### Option C: Full CLI (bandit/radon subprocess checks)
 
 ```bash
 pip install -r requirements.txt
@@ -22,7 +30,7 @@ cp cursor_gate.py ~/.cursor/cursor_gate.py
 python3 ~/.cursor/cursor_gate.py --file ./app.py --iterations 3
 ```
 
-### Option C: Docker (no local Python deps)
+### Option D: Docker (no local Python deps)
 
 ```bash
 docker build -t cursor-gate:latest .
@@ -68,7 +76,8 @@ python3 ~/.cursor/cursor_gate.py --file ./app.py --output /tmp/review.json
 ## Project Layout
 
 ```
-cursor_gate.py          # Main CLI script
+cursor_gate.py          # Full 15-gate reviewer (bandit, radon, litellm)
+cursor_gate_fastest.py  # Fail-fast optimized reviewer (stdlib + regex)
 Dockerfile              # Container image (bandit, radon, litellm pre-installed)
 docker-compose.yml      # One-command Docker runs
 scripts/
@@ -84,6 +93,7 @@ releases/
 
 | Setting | Default | Description |
 |---------|---------|-------------|
+| `cursorGate.useFastest` | `true` | Use fail-fast script (recommended) |
 | `cursorGate.runOnSave` | `false` | Auto-review on save |
 | `cursorGate.useDocker` | `false` | Run via Docker |
 | `cursorGate.iterations` | `3` | Max fix iterations |

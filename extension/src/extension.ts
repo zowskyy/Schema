@@ -9,6 +9,8 @@ interface GateResult {
   score?: number;
   gates?: Record<string, boolean>;
   elapsed_ms?: number;
+  ms?: number;
+  failed_at?: number | null;
   code?: string;
 }
 
@@ -52,32 +54,42 @@ function resolveScriptPath(context: vscode.ExtensionContext): string {
     return configured;
   }
 
-  const bundled = path.join(context.extensionPath, "scripts", "cursor_gate.py");
+  const useFastest = getConfig().get<boolean>("useFastest", true);
+  const scriptName = useFastest ? "cursor_gate_fastest.py" : "cursor_gate.py";
+  const bundled = path.join(context.extensionPath, "scripts", scriptName);
   if (fs.existsSync(bundled)) {
     return bundled;
   }
 
-  const homeScript = path.join(os.homedir(), ".cursor", "cursor_gate.py");
+  const homeScript = path.join(os.homedir(), ".cursor", scriptName);
   if (fs.existsSync(homeScript)) {
     return homeScript;
   }
 
   throw new Error(
-    "cursor_gate.py not found. Set cursorGate.scriptPath or install to ~/.cursor/cursor_gate.py"
+    `${scriptName} not found. Set cursorGate.scriptPath or install to ~/.cursor/${scriptName}`
   );
 }
 
 function buildArgs(filePath: string, outputPath: string): string[] {
   const cfg = getConfig();
-  return [
+  const useFastest = cfg.get<boolean>("useFastest", true);
+  const base = [
     "--file",
     filePath,
-    "--iterations",
-    String(cfg.get<number>("iterations", 3)),
     "--region",
     cfg.get<string>("region", "us-east-1"),
     "--output",
     outputPath,
+  ];
+  if (useFastest) {
+    return base;
+  }
+  return [
+    ...base.slice(0, 2),
+    "--iterations",
+    String(cfg.get<number>("iterations", 3)),
+    ...base.slice(2),
   ];
 }
 
@@ -159,7 +171,8 @@ function formatResult(result: GateResult, filePath: string): string {
     `=== Cursor Gate: ${path.basename(filePath)} ===`,
     `Status: ${result.status}`,
     `Score: ${result.score?.toFixed(3) ?? "n/a"}`,
-    `Elapsed: ${result.elapsed_ms ?? "n/a"} ms`,
+    `Elapsed: ${result.ms ?? result.elapsed_ms ?? "n/a"} ms`,
+    result.failed_at ? `Failed at gate: ${result.failed_at}` : "",
     "",
   ];
 
