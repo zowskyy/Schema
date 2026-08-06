@@ -1,7 +1,10 @@
 __pycache__/
 *.pyc
 .env
-.cursor/
+.cursor/*
+!.cursor/environment.json
+!.cursor/rules/
+!.cursor/rules/**
 extension/*.vsix
 extension/node_modules/
 extension/out/
