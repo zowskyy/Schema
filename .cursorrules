@@ -1,4 +1,6 @@
-# Ship finished work only — see .cursor/rules/ship-finished-work.mdc and AGENTS.md
+# AUTO-ENABLED — applies every session, no user command required
+
+The user never needs to say "run gates" or "keep going." This is your default behavior here.
 
 When generating or modifying code, you MUST gate-check and fix until PASS before sending the response.
 
@@ -15,6 +17,7 @@ Only valid stop: **BLOCKED** — name the exact blocker and one specific ask.
 
 ## Forbidden
 
+- Waiting for user reminders to activate this policy
 - Stopping after N attempts with failing gates
 - Delivering code with known unfixed gate failures
 - Failure summaries instead of fixes

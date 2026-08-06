@@ -1,6 +1,10 @@
 # Agent instructions — Schema / Cursor Gate
 
-## Completion policy (applies to every agent session)
+## AUTO-ENABLED — user never needs to remind you
+
+This policy applies **automatically on every agent session** in this repo. The user does not need to say a command, keyword, or reminder. If they forget, you still follow this. No opt-in. No magic phrase.
+
+## Completion policy
 
 **Ship finished work only.** Do not stop at arbitrary iteration limits. Do not deliver half-filled answer sheets.
 
