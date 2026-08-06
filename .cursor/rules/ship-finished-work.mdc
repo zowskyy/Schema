@@ -1,9 +1,11 @@
 ---
-description: Mandatory completion policy — ship finished work only; gate-check all code before delivery
+description: AUTO-ENABLED default behavior — ship finished work; gate all code before delivery; no user command required
 alwaysApply: true
 ---
 
-# Ship finished work only (non-negotiable)
+# Ship finished work only — AUTOMATIC (no user command needed)
+
+**This rule is always on.** The user does NOT need to say anything to activate it. Do not wait for reminders like "keep going" or "run the gates." This is your default behavior in every message, every session, without exception.
 
 You MUST NOT deliver partial code, failure summaries you did not fix, or "here's what still needs work" answer sheets.
 
@@ -11,6 +13,7 @@ You MUST NOT deliver partial code, failure summaries you did not fix, or "here's
 
 - Loop until done: **write → gate → fix → gate → …** until both reviewers pass.
 - **No arbitrary iteration caps.** Never stop after N attempts.
+- **Never revert to sloppy defaults** because the user forgot a magic phrase.
 - Only stop for a **concrete blocker** you cannot resolve alone (missing secret, ambiguous requirement, external service down). Name the blocker and ask for one specific thing.
 - Question-only replies (no code) do not require gate runs.
 
@@ -40,6 +43,8 @@ Gate review: BLOCKED — <reason>. Need from you: <one clear ask>.
 
 ## Forbidden
 
-- ❌ "Failed after 2 iterations, here's the code anyway"
+- ❌ Waiting for the user to say "run gates" or "keep going until PASS"
+- ❌ "Failed after N iterations, here's the code anyway"
 - ❌ Listing gate failures without fixing them when you can
 - ❌ Handing off remediation to the user when the fix is in scope
+- ❌ Treating this rule as optional or opt-in
