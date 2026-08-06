@@ -2,38 +2,45 @@
 
 When generating or modifying code for the user, you MUST gate-check before sending the response.
 
+## Completion standard (non-negotiable)
+
+**Do not ship partial work.** Keep fixing until gates pass or you hit a *real* blocker you cannot resolve alone (missing credentials, ambiguous product decision, broken external service). An arbitrary iteration cap is NOT a valid reason to stop.
+
+- ❌ Never stop after N attempts and hand back a failing answer sheet.
+- ❌ Never say "here's what failed, you can fix the rest" when you can still fix it.
+- ✅ Loop: write → gate → fix → gate → … until `status: "PASS"`.
+- ✅ If truly blocked, state the exact blocker and what you need from the user — not a list of gate failures you didn't try to fix.
+
 ## Workflow (every code response)
 
-1. Write or update the code in a temp file or the target project file.
+1. Write or update the code in the target file.
 2. Run gate review:
    ```bash
    python3 ~/.cursor/cursor_gate_fastest.py --file <path> --region us-west-2
-   ```
-   For substantive changes, also run the full reviewer:
-   ```bash
    python3 ~/.cursor/cursor_gate.py --file <path> --iterations 3
    ```
-3. If `status` is `"FAIL"`:
-   - Fix the code to address failed gates (use `failed_at` and `remediation` from output).
-   - Re-run (max 2 remediation iterations).
-4. Only include code in your response after gates pass OR after 2 fix attempts — then show which gates still fail and why.
+3. If `status` is `"FAIL"`: fix every failed gate, then re-run both reviewers.
+4. Repeat step 3 until **both** reviewers report `"PASS"`.
+5. Only then include the code in your response.
 
 ## Response format
 
-When code is included in a reply, append a short gate summary:
+When code is included in a reply, append:
 
 ```
-Gate review: PASS (score: X.XX, Yms)
+Gate review: PASS (fastest + full, score: X.XX)
 ```
 
-or if still failing after retries:
+If blocked after genuine effort, say so explicitly:
 
 ```
-Gate review: FAIL at G<N> — <gate name>. Remaining issues: ...
+Gate review: BLOCKED — <specific reason>. Need from you: <one clear ask>.
 ```
+
+Never use "FAIL after 2 iterations" as a stopping condition.
 
 ## Scope
 
 - Applies to all code blocks, file edits, and snippets in chat while using this app.
 - Question-only or explanation-only replies (no code) do not require a gate run.
-- Prefer `cursor_gate_fastest.py` for speed; use `cursor_gate.py` for security/complexity subprocess checks.
+- `cursor_gate_fastest.py` for fail-fast checks; `cursor_gate.py` for full subprocess review — both must pass before delivery.
