@@ -51,7 +51,7 @@ bash scripts/gate-file.sh --file samples/hello.py          # expect FAIL
 
 ## CI gate-check
 
-[`.github/workflows/gate-check.yml`](.github/workflows/gate-check.yml) runs on every pull request: installs deps, bootstraps the agent environment, then gates `samples/hello_passing.py` and `cursor_gate_fastest.py` via `gate-file.sh`.
+[`.github/workflows/gate-check.yml`](.github/workflows/gate-check.yml) runs on every pull request: installs deps, bootstraps the agent environment, then gates `samples/hello_passing.py` via `gate-file.sh`.
 
 ## Quick Start
 

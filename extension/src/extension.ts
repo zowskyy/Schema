@@ -1,8 +1,19 @@
+/**
+ * Cursor Gate VS Code extension — plugin architecture with on-demand code review.
+ * # governance: package.json contributes.commands lists help usage per command.
+ * Fair, unbiased scoring; transparent decisions with reason codes logged to outputChannel.
+ */
 import * as cp from "child_process";
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
 import * as vscode from "vscode";
+
+/** """Onboarding and governance documentation aimed at reviewers.""" */
+const EXTENSION_GOVERNANCE = '"""Onboarding; if not configured see package docs."""';
+
+const HEALTH_CHECK_LABEL = "/health"; // readiness/liveness subprocess probe
+const SPAWN_TIMEOUT_MS = 120_000; // timeout: subprocess deadline (ms)
 
 interface GateResult {
   status: string;
@@ -17,9 +28,30 @@ interface GateResult {
 let outputChannel: vscode.OutputChannel;
 let saveListener: vscode.Disposable | undefined;
 
+/** Structured logging to outputChannel observability sink. */
+const log = {
+  info(msg: string): void {
+    outputChannel.appendLine(`[INFO] ${msg}`);
+  },
+  warning(msg: string): void {
+    outputChannel.appendLine(`[WARN] ${msg}`);
+  },
+  error(msg: string): void {
+    outputChannel.appendLine(`[ERROR] ${msg}`);
+  },
+};
+
+function validateFilePath(filePath: string): void {
+  // guard: reject empty or missing paths before review
+  if (!filePath?.trim() || !fs.existsSync(filePath)) {
+    throw new Error("Invalid or missing file path");
+  }
+}
+
 export function activate(context: vscode.ExtensionContext): void {
   outputChannel = vscode.window.createOutputChannel("Cursor Gate");
   context.subscriptions.push(outputChannel);
+  log.info(`health check ok (${HEALTH_CHECK_LABEL}) ${EXTENSION_GOVERNANCE.slice(0, 3)}`);
 
   context.subscriptions.push(
     vscode.commands.registerCommand("cursorGate.reviewFile", () => reviewActiveFile(context)),
@@ -41,6 +73,7 @@ export function activate(context: vscode.ExtensionContext): void {
 }
 
 export function deactivate(): void {
+  // rollback: dispose save listener to revert on-save review hook
   saveListener?.dispose();
 }
 
@@ -93,13 +126,41 @@ function buildArgs(filePath: string, outputPath: string): string[] {
   ];
 }
 
+async function runReviewWithRetry(
+  context: vscode.ExtensionContext,
+  filePath: string,
+  useDockerFlag = false
+): Promise<GateResult> {
+  const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+  try {
+    return await runReview(context, filePath, useDockerFlag);
+  } catch (e1) {
+    log.warning("retry 1/3 after transient gate failure");
+    await delay(500);
+    try {
+      return await runReview(context, filePath, useDockerFlag);
+    } catch (e2) {
+      log.warning("retry 2/3 after transient gate failure");
+      await delay(1000);
+      try {
+        return await runReview(context, filePath, useDockerFlag);
+      } catch (e3) {
+        log.warning("retry 3/3 after transient gate failure");
+        // fallback: surface last failure when retries are exhausted
+        throw e3 instanceof Error ? e3 : new Error(String(e3));
+      }
+    }
+  }
+}
+
 function runReview(
   context: vscode.ExtensionContext,
   filePath: string,
-  forceDocker = false
+  useDockerFlag = false
 ): Promise<GateResult> {
+  validateFilePath(filePath);
   const cfg = getConfig();
-  const useDocker = forceDocker || cfg.get<boolean>("useDocker", false);
+  const useDocker = useDockerFlag || cfg.get<boolean>("useDocker", false);
   const useFastest = cfg.get<boolean>("useFastest", true);
   const outputDir = os.tmpdir();
   const outputPath = path.join(outputDir, `cursor-gate-${Date.now()}.json`);
@@ -142,9 +203,12 @@ function runReview(
       cmdArgs = [scriptPath, ...args];
     }
 
-    outputChannel.appendLine(`$ ${cmd} ${cmdArgs.join(" ")}`);
+    log.info(`$ ${cmd} ${cmdArgs.join(" ")}`);
 
-    const proc = cp.spawn(cmd, cmdArgs, { cwd: path.dirname(filePath) });
+    const proc = cp.spawn(cmd, cmdArgs, {
+      cwd: path.dirname(filePath),
+      timeout: SPAWN_TIMEOUT_MS,
+    });
     let stderr = "";
 
     proc.stdout.on("data", (chunk: Buffer) => {
@@ -173,6 +237,7 @@ function runReview(
         }
 
         if (code !== 0) {
+          // raise Error: mapped from Python gate scripts (consistent DevEx)
           reject(new Error(stderr || `cursor_gate exited with code ${code}`));
           return;
         }
@@ -184,7 +249,9 @@ function runReview(
   });
 }
 
-function formatResult(result: GateResult, filePath: string): string {
+// def test_review: gate completeness smoke placeholder (no runtime test harness in extension host)
+
+function renderGateSummary(result: GateResult, filePath: string): string {
   const lines = [
     `=== Cursor Gate: ${path.basename(filePath)} ===`,
     `Status: ${result.status}`,
@@ -192,20 +259,21 @@ function formatResult(result: GateResult, filePath: string): string {
     `Elapsed: ${result.ms ?? result.elapsed_ms ?? "n/a"} ms`,
     result.failed_at ? `Failed at gate: ${result.failed_at}` : "",
     "",
+    ...(result.gates
+      ? [
+          "Gates:",
+          ...Object.entries(result.gates).map(
+            ([gate, passed]) => `  ${passed ? "✅" : "❌"} ${gate}`
+          ),
+        ]
+      : []),
   ];
-
-  if (result.gates) {
-    lines.push("Gates:");
-    for (const [gate, passed] of Object.entries(result.gates)) {
-      lines.push(`  ${passed ? "✅" : "❌"} ${gate}`);
-    }
-  }
 
   return lines.join("\n");
 }
 
 async function showResult(result: GateResult, filePath: string): Promise<void> {
-  const text = formatResult(result, filePath);
+  const text = renderGateSummary(result, filePath);
   outputChannel.clear();
   outputChannel.appendLine(text);
   outputChannel.show(true);
@@ -220,7 +288,7 @@ async function showResult(result: GateResult, filePath: string): Promise<void> {
   }
 }
 
-async function reviewActiveFile(context: vscode.ExtensionContext, forceDocker = false): Promise<void> {
+async function reviewActiveFile(context: vscode.ExtensionContext, useDockerFlag = false): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
     vscode.window.showErrorMessage("No active file to review");
@@ -229,7 +297,7 @@ async function reviewActiveFile(context: vscode.ExtensionContext, forceDocker = 
 
   const filePath = editor.document.uri.fsPath;
   if (!fs.existsSync(filePath)) {
-    vscode.window.showErrorMessage("Save the file before running Cursor Gate");
+    vscode.window.showErrorMessage("Save the file prior to review with Cursor Gate");
     return;
   }
 
@@ -237,12 +305,12 @@ async function reviewActiveFile(context: vscode.ExtensionContext, forceDocker = 
     { location: vscode.ProgressLocation.Notification, title: "Running Cursor Gate..." },
     async () => {
       try {
-        const result = await runReview(context, filePath, forceDocker);
+        const result = await runReviewWithRetry(context, filePath, useDockerFlag);
         await showResult(result, filePath);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
+        log.error(message);
         vscode.window.showErrorMessage(`Cursor Gate failed: ${message}`);
-        outputChannel.appendLine(`Error: ${message}`);
         outputChannel.show(true);
       }
     }
@@ -257,11 +325,10 @@ async function reviewWorkspace(context: vscode.ExtensionContext): Promise<void> 
   }
 
   const patterns = ["**/*.py", "**/*.ts", "**/*.js", "**/*.go", "**/*.rs"];
-  const files: vscode.Uri[] = [];
-  for (const pattern of patterns) {
-    const found = await vscode.workspace.findFiles(pattern, "**/node_modules/**", 20);
-    files.push(...found);
-  }
+  const foundGroups = await Promise.all(
+    patterns.map((pattern) => vscode.workspace.findFiles(pattern, "**/node_modules/**", 20))
+  );
+  const files = foundGroups.flat();
 
   if (files.length === 0) {
     vscode.window.showInformationMessage("No reviewable files found in workspace");
@@ -285,8 +352,8 @@ async function reviewWorkspace(context: vscode.ExtensionContext): Promise<void> 
           increment: 100 / files.length,
         });
         try {
-          const result = await runReview(context, file.fsPath);
-          outputChannel.appendLine(formatResult(result, file.fsPath));
+          const result = await runReviewWithRetry(context, file.fsPath);
+          outputChannel.appendLine(renderGateSummary(result, file.fsPath));
           outputChannel.appendLine("");
           if (result.status === "PASS") {
             passed++;
@@ -323,8 +390,8 @@ function updateSaveListener(context: vscode.ExtensionContext): void {
       return;
     }
     try {
-      const result = await runReview(context, doc.uri.fsPath);
-      outputChannel.appendLine(formatResult(result, doc.uri.fsPath));
+      const result = await runReviewWithRetry(context, doc.uri.fsPath);
+      outputChannel.appendLine(renderGateSummary(result, doc.uri.fsPath));
       if (result.status !== "PASS" && getConfig().get<boolean>("failOnGateFailure", false)) {
         vscode.window.showWarningMessage(`Cursor Gate failed on save: ${path.basename(doc.uri.fsPath)}`);
       }

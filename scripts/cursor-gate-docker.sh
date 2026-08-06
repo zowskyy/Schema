@@ -67,13 +67,13 @@ fi
 DOCKER_ARGS=("$GATE_SCRIPT" "${ARGS[@]}")
 
 if $STDIN_MODE; then
-  docker run --rm -i "${ENV_FILE_ARGS[@]}" "${MOUNT_ARGS[@]}" "${WORKDIR_ARGS[@]}" "$IMAGE" "${ARGS[@]}"
+  docker run --rm -i "${ENV_FILE_ARGS[@]}" "${MOUNT_ARGS[@]}" "${WORKDIR_ARGS[@]}" "$IMAGE" "${DOCKER_ARGS[@]}"
 elif [[ -n "$FILE_ARG" ]]; then
   # Resolve relative paths inside container workspace mount
   if [[ "$FILE_ARG" != /* ]]; then
-  ARGS=("${ARGS[@]/--file $FILE_ARG/--file /workspace/$FILE_ARG}")
+  DOCKER_ARGS=("${DOCKER_ARGS[@]/--file $FILE_ARG/--file /workspace/$FILE_ARG}")
   fi
-  docker run --rm "${ENV_FILE_ARGS[@]}" "${MOUNT_ARGS[@]}" "${WORKDIR_ARGS[@]}" "$IMAGE" "${ARGS[@]}"
+  docker run --rm "${ENV_FILE_ARGS[@]}" "${MOUNT_ARGS[@]}" "${WORKDIR_ARGS[@]}" "$IMAGE" "${DOCKER_ARGS[@]}"
 else
-  docker run --rm "${ENV_FILE_ARGS[@]}" "${MOUNT_ARGS[@]}" "${WORKDIR_ARGS[@]}" "$IMAGE" "${ARGS[@]}"
+  docker run --rm "${ENV_FILE_ARGS[@]}" "${MOUNT_ARGS[@]}" "${WORKDIR_ARGS[@]}" "$IMAGE" "${DOCKER_ARGS[@]}"
 fi
