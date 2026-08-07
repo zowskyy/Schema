@@ -5,7 +5,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-python3 -m pip install -q -r requirements.txt
+python3 -m pip install -q -r requirements.txt 2>/dev/null || \
+  python3 -m pip install -q --break-system-packages -r requirements.txt
 
 mkdir -p ~/.cursor/gate-logs ~/.cursor/gate-cache ~/.cursor/rules
 
