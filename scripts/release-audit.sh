@@ -249,7 +249,7 @@ section "Release audit summary"
 echo "Blockers: $BLOCKERS"
 echo "Warnings: $WARNINGS"
 
-If [[ $BLOCKERS -gt 0 ]]; then
+if [[ $BLOCKERS -gt 0 ]]; then
   echo
   echo "RELEASE_READY: NO — Workers must IMPLEMENT remaining gaps (do not trim docs)."
   echo "Keep going until every listed feature works unless Architect explicitly defers."
