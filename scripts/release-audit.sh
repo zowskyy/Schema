@@ -38,7 +38,7 @@ Audits the repository for release blockers:
 Run AFTER all gate reviewers PASS on shippable files.
 Exits 1 if any blockers are found.
 
-See .cursor/rules/architect-protocol.mdc — Feature Completeness Gate.
+See .cursor/rules/architect-protocol.mdc — Workers implement all gaps; do not trim docs.
 EOF
 }
 
@@ -249,12 +249,13 @@ section "Release audit summary"
 echo "Blockers: $BLOCKERS"
 echo "Warnings: $WARNINGS"
 
-if [[ $BLOCKERS -gt 0 ]]; then
+If [[ $BLOCKERS -gt 0 ]]; then
   echo
-  echo "RELEASE_READY: NO — fix blockers above, then re-run gates + release-audit.sh"
+  echo "RELEASE_READY: NO — Workers must IMPLEMENT remaining gaps (do not trim docs)."
+  echo "Keep going until every listed feature works unless Architect explicitly defers."
   exit 1
 fi
 
 echo
-echo "RELEASE_READY: feature completeness audit PASS (gates must also PASS separately)"
+echo "RELEASE_READY: entire product audit PASS (gates must also PASS separately)"
 exit 0

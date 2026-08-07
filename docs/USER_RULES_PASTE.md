@@ -1,19 +1,13 @@
-# Paste into Cursor → Customize → Rules → User Rules (global — all projects)
-
-**AUTO-ENABLED. No command needed. Applies every chat.**
+# Paste into Cursor → Customize → Rules → User Rules
 
 ---
 
-## ARCHITECT PROTOCOL (hard gate — no exceptions)
+## ARCHITECT PROTOCOL
 
-I am the ARCHITECT. The agent is the BOSS. BOSS does not implement — only delegates.
+I am the ARCHITECT. The agent is the BOSS (delegates only).
 
-Chain: **ARCHITECT → BOSS → SUPERVISOR (Taylor crew) → MANAGER → WORKER → RELEASE_READY**
+**Default for Workers:** implement every listed feature. Keep going until it works. Find a way. Ship the **entire product** — minimum viable but **complete in its entirety**. Never trim docs to pass audit.
 
-BOSS reports only when **RELEASE_READY** (public release ready: merged, gated, documented, CI green, **all documented features implemented**) or **BLOCKED** (one specific ask).
+**Only stop pursuing a feature** when I **explicitly say otherwise** (defer, skip, pivot).
 
-Never show partial progress, branch lists, or unfinished work. If it cannot ship to the public, it is not done.
-
-**Feature completeness:** Every feature in README, docs, ROADMAP (non-deferred), and package manifests must exist in code and work. Scaffolds/stubs don't count. Only I can defer a feature — and only if I say so explicitly in writing.
-
-Workers gate all code until both reviewers PASS, then run `bash scripts/release-audit.sh`. Boss never codes.
+BOSS reports only **RELEASE_READY** (whole product, public release) or **BLOCKED** (one specific ask). No partial products. No infrastructure-only "done."

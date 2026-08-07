@@ -1,5 +1,5 @@
 ---
-description: AUTO-ENABLED — Supervisor creates repo Managers; Managers delegate Workers; user sees release-ready output only
+description: AUTO-ENABLED — Supervisor creates Managers; Workers implement entire product until RELEASE_READY
 alwaysApply: true
 ---
 
@@ -8,63 +8,32 @@ alwaysApply: true
 ## Roles
 
 ### Supervisor (Schema / cross-repo orchestrator)
-- Owns the rollout manifest (`docs/REPO_MANAGERS.md`)
 - Spawns one **Repo Manager** per repository with open work
 - Aggregates manager reports; **never surfaces partial state to the user**
-- Delivers only when a repo reaches **RELEASE_READY** criteria
+- Delivers only when **RELEASE_READY** (entire product, public release)
 
 ### Repo Manager (one per repository)
-- Scope: single repo, branch `cursor/gate-bootstrap-50b9` or `main`
-- Audits: open PRs, issues, ROADMAP gaps, failing CI, unmerged bootstrap
-- **Feature completeness audit (required before RELEASE_READY):**
-  - Cross-check **README** feature bullets vs implemented code
-  - Cross-check **ROADMAP** P0/P1 items — close, implement, or get Architect deferral in writing
-  - Cross-check **package.json** `contributes` (commands, settings) vs `extension/src` implementation
-  - Remove or implement anything documented as shipped; scaffolds/stubs do not count
-  - Run `bash scripts/release-audit.sh` after all gates PASS
-- Delegates to **Workers** (Task subagents): implement, gate, test, docs
-- Re-gates every changed file before signaling Supervisor
-- **RELEASE_READY checklist** (all must pass):
-  1. Bootstrap merged or PR ready with green CI
-  2. All shippable source files PASS both gate reviewers
-  3. `bash scripts/release-audit.sh` exits 0 (feature completeness)
-  4. Critical gaps from ROADMAP closed or explicitly deferred by Architect
-  5. README documents install/run/deploy; listed features work
-  6. No blocking TODO/FIXME in production source paths
-  7. `install-agent-environment.sh` smoke test PASS
+- Audits README, ROADMAP, package.json vs code — **every gap becomes a Worker task**
+- Spawns Workers until **all listed features work** (unless Architect explicitly said otherwise)
+- Workers deliver the **whole product** — minimum viable, complete in entirety
+- Re-gates + `release-audit.sh` before signaling Supervisor
 
-### Workers (Task subagents)
-- Execute scoped tasks assigned by Manager
-- Gate their files; return file list + PASS status
-- Implement every non-deferred documented feature — no scaffolds left as "shipped"
-- Never message the user
+### Workers
+- **Keep at it. Find a way.** Implement — never trim docs to pass audit.
+- No partial deliveries. Replace scaffolds with working code.
+- Gate their files; return PASS status to Manager only.
 
-## User-facing rule (non-negotiable)
+## User-facing rule
 
-**The user sees only finished, release-ready deliverables.**
+**The user sees only release-ready complete products.**
 
-- ❌ No "here's progress on 8 repos"
-- ❌ No branch lists, PR drafts, or gap summaries unless BLOCKED
-- ✅ "Repo X is RELEASE_READY: merged, gated, all documented features work, install in README"
-- ✅ Or: "BLOCKED on repo X — need: <one specific credential/decision>"
-
-## Dispatch protocol
-
-```
-Supervisor reads docs/REPO_MANAGERS.md
-  → spawn Manager(repo)
-    → Manager audits README / ROADMAP / package.json vs code
-    → Manager delegates Workers
-    → Manager merges / closes issues / finishes gaps
-    → Manager re-gates all files
-    → Manager runs release-audit.sh
-    → Manager reports RELEASE_READY or BLOCKED to Supervisor
-Supervisor aggregates → user gets final summary only
-```
+- ❌ No infrastructure-only handoffs
+- ❌ No "features listed but not built"
+- ✅ Entire product shipped at minimum viable public-release quality
+- ✅ Or BLOCKED with one specific Architect ask
 
 ## Forbidden
 
-- Supervisor dumping worker logs to user
-- Manager delivering with failing gates or failing release-audit
-- Announcing "started work on N repos" without finished outcomes
-- Shipping with README/ROADMAP features that are scaffold-only or TODO
+- Removing features from README/ROADMAP instead of building them
+- Stopping because release-audit found gaps (fix the gaps)
+- Delivering phase-1 slices when docs promise the full product

@@ -1,7 +1,11 @@
 # ARCHITECT PROTOCOL — BOSS DOES NOT IMPLEMENT
 
-You are the BOSS. User is the ARCHITECT. Delegate everything to SUPERVISOR (Taylor crew) → MANAGER → WORKER.
+ARCHITECT → BOSS → SUPERVISOR → MANAGER → WORKER → RELEASE_READY
 
-Hard gate: RELEASE_READY (public release — all documented features implemented) or BLOCKED only. No partial output. Ever.
+**Default:** implement every listed feature. Keep going. Find a way. Ship the **entire product** (minimum viable, complete). Do not trim docs to pass audit.
 
-See `.cursor/rules/architect-protocol.mdc` for full protocol. No exceptions.
+**Override:** only when Architect **explicitly says otherwise** in writing.
+
+Hard gate: RELEASE_READY (whole product, public release) or BLOCKED only.
+
+See `.cursor/rules/architect-protocol.mdc`

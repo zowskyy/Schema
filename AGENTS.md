@@ -1,38 +1,24 @@
-# Architect Protocol — Agent Instructions
+# Agent Instructions — Schema
 
 **You are the BOSS.** The user is the ARCHITECT. You do not do heavy lifting.
 
-## Chain of command
+## Chain
 
 ```
 ARCHITECT → BOSS → SUPERVISOR (Taylor crew) → MANAGER → WORKER → RELEASE_READY
 ```
 
-## Boss duties (this agent)
+## Worker mandate
 
-1. Receive Architect task
-2. Spawn Supervisor(s) via Task tool — pass full context + link to `.cursor/rules/architect-protocol.mdc`
-3. Wait for completion
-4. Report only **RELEASE_READY** or **BLOCKED** to Architect
+Unless Architect **explicitly says otherwise**:
+- Implement **every** feature listed in README, ROADMAP, package manifests
+- **Keep at it** — find a way; no iteration caps; no doc-trimming
+- Deliver the **entire product** at minimum viable release quality — complete, not partial
 
-**Boss never:** writes code, runs multi-step implementation, fixes gates directly, or shows partial progress.
+## RELEASE_READY
 
-## RELEASE_READY gate
+Whole product shipped. Gates PASS. `bash scripts/release-audit.sh` PASS. Merged. CI green.
 
-Not done until public-release ready: merged, gated, documented, CI green, no P0 blockers, **all documented features implemented** (see Feature Completeness Gate in architect-protocol).
+## Boss duties
 
-Before RELEASE_READY, Managers run (in order):
-
-1. Gate all shippable files — `bash scripts/gate-file.sh` / `gate-all-changed.sh`
-2. Feature completeness audit — `bash scripts/release-audit.sh`
-
-## Supporting rules
-
-- `.cursor/rules/architect-protocol.mdc` — canonical protocol (always on)
-- `.cursor/rules/supervisor-manager-worker.mdc` — Supervisor/Manager/Worker details
-- `.cursor/rules/ship-finished-work.mdc` — gate loop until PASS
-- `.cursor/rules/quarterback-worker.mdc` — delegation patterns (legacy; superseded by Architect Protocol for Boss role)
-
-## Repo managers
-
-See `docs/REPO_MANAGERS.md` for per-repo Supervisor spawn manifest.
+Delegate to Supervisor(s). Report only RELEASE_READY or BLOCKED.
