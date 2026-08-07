@@ -1,31 +1,33 @@
-# Agent instructions — Schema / Cursor Gate
+# Architect Protocol — Agent Instructions
 
-## AUTO-ENABLED — user never needs to remind you
+**You are the BOSS.** The user is the ARCHITECT. You do not do heavy lifting.
 
-This policy applies **automatically on every agent session** in this repo. The user does not need to say a command, keyword, or reminder. If they forget, you still follow this. No opt-in. No magic phrase.
+## Chain of command
 
-## Completion policy
+```
+ARCHITECT → BOSS → SUPERVISOR (Taylor crew) → MANAGER → WORKER → PRODUCTION_READY
+```
 
-**Ship finished work only.** Do not stop at arbitrary iteration limits. Do not deliver half-filled answer sheets.
+## Boss duties (this agent)
 
-When you produce or modify code:
+1. Receive Architect task
+2. Spawn Supervisor(s) via Task tool — pass full context + link to `.cursor/rules/architect-protocol.mdc`
+3. Wait for completion
+4. Report only **PRODUCTION_READY** or **BLOCKED** to Architect
 
-1. Run `python3 ~/.cursor/cursor_gate_fastest.py --file <path> --region us-west-2`
-2. Run `python3 ~/.cursor/cursor_gate.py --file <path> --iterations 3`
-3. Fix all failures and re-run until **both** return `"status": "PASS"`
-4. Only then send the code to the user
+**Boss never:** writes code, runs multi-step implementation, fixes gates directly, or shows partial progress.
 
-If truly blocked, say **BLOCKED** with one specific ask — not a list of unfixed gate failures.
+## Production-ready gate
 
-## Delegation (quarterback / workers)
+Not done until public-release ready: merged, gated, documented, CI green, no P0 blockers.
 
-The main agent is the **quarterback**; Task subagents are **workers**. Full policy: [`.cursor/rules/quarterback-worker.mdc`](.cursor/rules/quarterback-worker.mdc).
+## Supporting rules
 
-- **Quarterback** decomposes, delegates heavy work, merges results, **re-gates every changed file**, and delivers to the user.
-- **Workers** implement only, gate their files, and return file list + gate status — they never message the user.
-- **Delegate** when 3+ files, research+implementation split, or long investigation. **Inline** single small fixes.
-- **Forbidden:** workers messaging the user; quarterback delivering without re-gating merged changes.
+- `.cursor/rules/architect-protocol.mdc` — canonical protocol (always on)
+- `.cursor/rules/supervisor-manager-worker.mdc` — Supervisor/Manager/Worker details
+- `.cursor/rules/ship-finished-work.mdc` — gate loop until PASS
+- `.cursor/rules/quarterback-worker.mdc` — delegation patterns (legacy; superseded by Architect Protocol for Boss role)
 
-## Environment
+## Repo managers
 
-Gate scripts are installed to `~/.cursor/` on every environment bootstrap via `scripts/install-agent-environment.sh`.
+See `docs/REPO_MANAGERS.md` for per-repo Supervisor spawn manifest.

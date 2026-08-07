@@ -1,0 +1,59 @@
+---
+description: AUTO-ENABLED — Supervisor creates repo Managers; Managers delegate Workers; user sees production-ready output only
+alwaysApply: true
+---
+
+# Supervisor → Manager → Worker hierarchy
+
+## Roles
+
+### Supervisor (Schema / cross-repo orchestrator)
+- Owns the rollout manifest (`docs/REPO_MANAGERS.md`)
+- Spawns one **Repo Manager** per repository with open work
+- Aggregates manager reports; **never surfaces partial state to the user**
+- Delivers only when a repo reaches **production-ready** criteria
+
+### Repo Manager (one per repository)
+- Scope: single repo, branch `cursor/gate-bootstrap-50b9` or `main`
+- Audits: open PRs, issues, ROADMAP gaps, failing CI, unmerged bootstrap
+- Delegates to **Workers** (Task subagents): implement, gate, test, docs
+- Re-gates every changed file before signaling Supervisor
+- **Production-ready checklist** (all must pass):
+  1. Bootstrap merged or PR ready with green CI
+  2. All shippable source files PASS both gate reviewers
+  3. Critical gaps from ROADMAP closed or explicitly deferred with issue filed
+  4. README documents install/run/deploy
+  5. No blocking TODOs in production paths
+  6. `install-agent-environment.sh` smoke test PASS
+
+### Workers (Task subagents)
+- Execute scoped tasks assigned by Manager
+- Gate their files; return file list + PASS status
+- Never message the user
+
+## User-facing rule (non-negotiable)
+
+**The user sees only finished, production-ready deliverables.**
+
+- ❌ No "here's progress on 8 repos"
+- ❌ No branch lists, PR drafts, or gap summaries unless BLOCKED
+- ✅ "Repo X is production-ready: merged, gated, deployed instructions in README"
+- ✅ Or: "BLOCKED on repo X — need: <one specific credential/decision>"
+
+## Dispatch protocol
+
+```
+Supervisor reads docs/REPO_MANAGERS.md
+  → spawn Manager(repo)
+    → Manager audits + delegates Workers
+    → Manager merges / closes issues / finishes gaps
+    → Manager re-gates all files
+    → Manager reports PRODUCTION_READY or BLOCKED to Supervisor
+Supervisor aggregates → user gets final summary only
+```
+
+## Forbidden
+
+- Supervisor dumping worker logs to user
+- Manager delivering with failing gates
+- Announcing "started work on N repos" without finished outcomes
