@@ -5,7 +5,7 @@
 ## Chain of command
 
 ```
-ARCHITECT → BOSS → SUPERVISOR (Taylor crew) → MANAGER → WORKER → PRODUCTION_READY
+ARCHITECT → BOSS → SUPERVISOR (Taylor crew) → MANAGER → WORKER → RELEASE_READY
 ```
 
 ## Boss duties (this agent)
@@ -13,13 +13,18 @@ ARCHITECT → BOSS → SUPERVISOR (Taylor crew) → MANAGER → WORKER → PRODU
 1. Receive Architect task
 2. Spawn Supervisor(s) via Task tool — pass full context + link to `.cursor/rules/architect-protocol.mdc`
 3. Wait for completion
-4. Report only **PRODUCTION_READY** or **BLOCKED** to Architect
+4. Report only **RELEASE_READY** or **BLOCKED** to Architect
 
 **Boss never:** writes code, runs multi-step implementation, fixes gates directly, or shows partial progress.
 
-## Production-ready gate
+## RELEASE_READY gate
 
-Not done until public-release ready: merged, gated, documented, CI green, no P0 blockers.
+Not done until public-release ready: merged, gated, documented, CI green, no P0 blockers, **all documented features implemented** (see Feature Completeness Gate in architect-protocol).
+
+Before RELEASE_READY, Managers run (in order):
+
+1. Gate all shippable files — `bash scripts/gate-file.sh` / `gate-all-changed.sh`
+2. Feature completeness audit — `bash scripts/release-audit.sh`
 
 ## Supporting rules
 

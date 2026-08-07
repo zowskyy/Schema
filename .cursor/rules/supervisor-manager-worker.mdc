@@ -1,5 +1,5 @@
 ---
-description: AUTO-ENABLED — Supervisor creates repo Managers; Managers delegate Workers; user sees production-ready output only
+description: AUTO-ENABLED — Supervisor creates repo Managers; Managers delegate Workers; user sees release-ready output only
 alwaysApply: true
 ---
 
@@ -11,33 +11,41 @@ alwaysApply: true
 - Owns the rollout manifest (`docs/REPO_MANAGERS.md`)
 - Spawns one **Repo Manager** per repository with open work
 - Aggregates manager reports; **never surfaces partial state to the user**
-- Delivers only when a repo reaches **production-ready** criteria
+- Delivers only when a repo reaches **RELEASE_READY** criteria
 
 ### Repo Manager (one per repository)
 - Scope: single repo, branch `cursor/gate-bootstrap-50b9` or `main`
 - Audits: open PRs, issues, ROADMAP gaps, failing CI, unmerged bootstrap
+- **Feature completeness audit (required before RELEASE_READY):**
+  - Cross-check **README** feature bullets vs implemented code
+  - Cross-check **ROADMAP** P0/P1 items — close, implement, or get Architect deferral in writing
+  - Cross-check **package.json** `contributes` (commands, settings) vs `extension/src` implementation
+  - Remove or implement anything documented as shipped; scaffolds/stubs do not count
+  - Run `bash scripts/release-audit.sh` after all gates PASS
 - Delegates to **Workers** (Task subagents): implement, gate, test, docs
 - Re-gates every changed file before signaling Supervisor
-- **Production-ready checklist** (all must pass):
+- **RELEASE_READY checklist** (all must pass):
   1. Bootstrap merged or PR ready with green CI
   2. All shippable source files PASS both gate reviewers
-  3. Critical gaps from ROADMAP closed or explicitly deferred with issue filed
-  4. README documents install/run/deploy
-  5. No blocking TODOs in production paths
-  6. `install-agent-environment.sh` smoke test PASS
+  3. `bash scripts/release-audit.sh` exits 0 (feature completeness)
+  4. Critical gaps from ROADMAP closed or explicitly deferred by Architect
+  5. README documents install/run/deploy; listed features work
+  6. No blocking TODO/FIXME in production source paths
+  7. `install-agent-environment.sh` smoke test PASS
 
 ### Workers (Task subagents)
 - Execute scoped tasks assigned by Manager
 - Gate their files; return file list + PASS status
+- Implement every non-deferred documented feature — no scaffolds left as "shipped"
 - Never message the user
 
 ## User-facing rule (non-negotiable)
 
-**The user sees only finished, production-ready deliverables.**
+**The user sees only finished, release-ready deliverables.**
 
 - ❌ No "here's progress on 8 repos"
 - ❌ No branch lists, PR drafts, or gap summaries unless BLOCKED
-- ✅ "Repo X is production-ready: merged, gated, deployed instructions in README"
+- ✅ "Repo X is RELEASE_READY: merged, gated, all documented features work, install in README"
 - ✅ Or: "BLOCKED on repo X — need: <one specific credential/decision>"
 
 ## Dispatch protocol
@@ -45,15 +53,18 @@ alwaysApply: true
 ```
 Supervisor reads docs/REPO_MANAGERS.md
   → spawn Manager(repo)
-    → Manager audits + delegates Workers
+    → Manager audits README / ROADMAP / package.json vs code
+    → Manager delegates Workers
     → Manager merges / closes issues / finishes gaps
     → Manager re-gates all files
-    → Manager reports PRODUCTION_READY or BLOCKED to Supervisor
+    → Manager runs release-audit.sh
+    → Manager reports RELEASE_READY or BLOCKED to Supervisor
 Supervisor aggregates → user gets final summary only
 ```
 
 ## Forbidden
 
 - Supervisor dumping worker logs to user
-- Manager delivering with failing gates
+- Manager delivering with failing gates or failing release-audit
 - Announcing "started work on N repos" without finished outcomes
+- Shipping with README/ROADMAP features that are scaffold-only or TODO

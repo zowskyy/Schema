@@ -18,6 +18,13 @@ Usage: gate-file.sh --file PATH
 
 Runs cursor_gate_fastest.py and cursor_gate.py with --region $REGION.
 Exits 1 if either reviewer returns status FAIL.
+
+RELEASE_READY workflow (order matters):
+  1. gate-file.sh / gate-all-changed.sh  — all shippable files PASS both reviewers
+  2. release-audit.sh                    — feature completeness (README/ROADMAP/package vs code)
+
+Do not claim RELEASE_READY until both steps exit 0.
+See .cursor/rules/architect-protocol.mdc — Feature Completeness Gate.
 EOF
 }
 
