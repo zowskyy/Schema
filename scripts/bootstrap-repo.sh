@@ -21,6 +21,15 @@ for f in gate-file.sh gate-all-changed.sh install-agent-environment.sh; do
   chmod +x "$TARGET/scripts/$f"
 done
 
+# Optional docs/LICENSE from Schema
+for f in LICENSE .env.example; do
+  [[ -f "$SCHEMA_ROOT/$f" ]] && [[ ! -f "$TARGET/$f" ]] && cp -f "$SCHEMA_ROOT/$f" "$TARGET/$f"
+done
+[[ -d "$SCHEMA_ROOT/docs" ]] && mkdir -p "$TARGET/docs" && \
+  for f in USER_RULES_PASTE.md; do
+    [[ -f "$SCHEMA_ROOT/docs/$f" ]] && cp -f "$SCHEMA_ROOT/docs/$f" "$TARGET/docs/$f"
+  done
+
 # Samples
 cp -f "$SCHEMA_ROOT/samples/hello_passing.py" "$TARGET/samples/"
 cp -f "$SCHEMA_ROOT/samples/hello.py" "$TARGET/samples/"
